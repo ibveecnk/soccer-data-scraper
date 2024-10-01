@@ -3,7 +3,6 @@ from IPython.display import clear_output
 import csv
 
 ENDPOINT = "http://dbpedia.org/sparql"
-CSV_PATH = "data.csv"
 QUERY_LIMIT = 10000
 
 q = """
@@ -19,9 +18,12 @@ WHERE {
   ?player a dbo:SoccerPlayer ;
           foaf:name ?name .
   ?player dbo:birthDate ?birthDate .
-  
+
   # Limiting birthdate to less than 40 years ago
   FILTER (?birthDate >= (NOW() - "P40Y"^^xsd:duration))
+
+  # Ensuring that the name is not empty or null
+  FILTER (STRLEN(?name) > 0)
 
   OPTIONAL { 
     ?player dbo:position ?position . 
@@ -38,6 +40,11 @@ WHERE {
 }
 """
 q += f"\nLIMIT 10000"
+
+q_hash = hex(abs(hash(q)))[2:].zfill(16)
+
+CSV_PATH = f"{q_hash}.csv"
+CLEAN_CSV_PATH = f"{q_hash}-clean.csv"
 
 sparql = SPARQLWrapper(ENDPOINT)
 
@@ -61,7 +68,7 @@ def write(bin_data):
 def lines(filepath = CSV_PATH):
     return sum(1 for _ in open(filepath))
     
-def remove_duplicate_headers(input_file = CSV_PATH, output_file = f"{CSV_PATH}-cleaned.csv"):
+def remove_duplicate_headers(input_file = CSV_PATH, output_file = CLEAN_CSV_PATH):
     with open(input_file, 'r', newline='', encoding='utf-8') as infile:
         reader = csv.reader(infile)
         header = next(reader)  # Read the header row
